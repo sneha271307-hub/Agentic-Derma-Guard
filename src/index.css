@@ -1,20 +1,20 @@
 /* ---------- Design tokens ---------- */
 :root {
-  --bone: #eef1ec;
-  --paper: #fbfcfa;
-  --ink: #10292b;
-  --ink-soft: #4a6263;
-  --lens: #0a1a1c;
-  --blush: #e9cdbb;
-  --teal: #1f7a6e;
-  --teal-bright: #2fa38f;
-  --line: #d9dfd8;
+  --bone: #f1f5fa;
+  --paper: #ffffff;
+  --ink: #13213b;
+  --ink-soft: #50617a;
+  --lens: #08142b;
+  --blush: #9cecf0;
+  --teal: #087b8a;
+  --teal-bright: #12b9c5;
+  --line: #d9e2ee;
   --green: #1f7a5a;
   --coral: #b83a2e;
   --amber: #f2b84b;
   --radius: 14px;
-  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 
@@ -31,7 +31,7 @@ body {
 h1, h2, p, ul, ol, dl, dd { margin: 0; }
 ul, ol { padding: 0; list-style: none; }
 button, select { font: inherit; color: inherit; }
-code { font-family: var(--font-mono); font-size: 0.9em; background: #e3e8e1; padding: 1px 6px; border-radius: 5px; }
+code { font-family: var(--font-mono); font-size: 0.9em; background: #e8eef5; padding: 1px 6px; border-radius: 5px; }
 
 :focus-visible { outline: 3px solid var(--teal-bright); outline-offset: 2px; }
 
@@ -55,6 +55,9 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: #e3e8e1; pad
 .mode { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px; }
 .mode--demo { background: #fbecc8; color: #6b4a06; }
 .mode--live { background: #d3efe4; color: #0f5a42; }
+.theme-toggle { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; background: var(--paper); color: var(--ink); cursor: pointer; font-weight: 700; }
+.theme-toggle:hover { border-color: var(--teal); }
+.theme-toggle span:first-child { font-size: 17px; line-height: 1; }
 
 /* ---------- Layout ---------- */
 .screen { display: grid; grid-template-columns: minmax(340px, 420px) 1fr; gap: 28px; align-items: start; }
@@ -74,8 +77,8 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: #e3e8e1; pad
 /* ---------- Buttons ---------- */
 .btn { border: 0; border-radius: 999px; padding: 12px 22px; font-weight: 600; cursor: pointer; transition: transform 0.12s, background 0.12s; }
 .btn:active:not(:disabled) { transform: scale(0.98); }
-.btn--primary { background: var(--teal); color: #fff; }
-.btn--primary:hover:not(:disabled) { background: #19665c; }
+.btn--primary { background: #11b7c3; color: #07172a; }
+.btn--primary:hover:not(:disabled) { background: #079aa8; color: #fff; }
 .btn--ghost { background: transparent; border: 1.5px solid var(--line); color: var(--ink); }
 .btn--ghost:hover:not(:disabled) { border-color: var(--ink); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -243,4 +246,72 @@ code { font-family: var(--font-mono); font-size: 0.9em; background: #e3e8e1; pad
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---------- Dark theme ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bone: #081226;
+  --paper: #101e37;
+  --ink: #edf4ff;
+  --ink-soft: #b3c0d5;
+  --lens: #071020;
+  --blush: #8eeaf0;
+  --teal: #16aab8;
+  --teal-bright: #6ce5eb;
+  --line: #2a3b58;
+  --green: #18835f;
+  --coral: #c54743;
+  --amber: #f0bd54;
+}
+
+:root[data-theme="dark"] body {
+  background: radial-gradient(ellipse at 78% 4%, #142a51 0, #081226 45rem), var(--bone);
+  color: var(--ink);
+}
+:root[data-theme="dark"] .header,
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .stat,
+:root[data-theme="dark"] .pipe__step,
+:root[data-theme="dark"] .theme-toggle,
+:root[data-theme="dark"] .select select { background-color: var(--paper); color: var(--ink); }
+:root[data-theme="dark"] .header { background: rgba(12, 25, 48, 0.94); backdrop-filter: blur(14px); }
+:root[data-theme="dark"] .tab { color: var(--ink-soft); }
+:root[data-theme="dark"] .tab:hover,
+:root[data-theme="dark"] .pipe__dot,
+:root[data-theme="dark"] .bar__track { background: #1a2a46; }
+:root[data-theme="dark"] .tab--on,
+:root[data-theme="dark"] .tab--on:hover { background: #19395a; color: #f2fbff; }
+:root[data-theme="dark"] .lens-panel { border: 1px solid #263956; box-shadow: 0 24px 70px rgba(0, 0, 0, .24); }
+:root[data-theme="dark"] .lens__glass { background: radial-gradient(circle at 35% 30%, #142849, #050b16); }
+:root[data-theme="dark"] .pipe__step { border-color: var(--line); }
+:root[data-theme="dark"] .pipe__step--active { border-color: var(--teal-bright); }
+:root[data-theme="dark"] .card--empty,
+:root[data-theme="dark"] .triage--idle { background: #13223b; border-color: #3a4d69; color: var(--ink); }
+:root[data-theme="dark"] .chip--good,
+:root[data-theme="dark"] .check__icon--ok,
+:root[data-theme="dark"] .dec--auto_triage { background: #153d38; color: #a9eed7; }
+:root[data-theme="dark"] .chip--bad,
+:root[data-theme="dark"] .check__icon--no,
+:root[data-theme="dark"] .bar__risk,
+:root[data-theme="dark"] .dec--refer { background: #492a36; color: #ffc2bd; }
+:root[data-theme="dark"] .chip--note,
+:root[data-theme="dark"] .dec--re_image { background: #493d25; color: #ffe1a3; }
+:root[data-theme="dark"] .alert { background: #492a36; color: #ffd1cc; }
+:root[data-theme="dark"] .bar__fill { background: #537f88; }
+:root[data-theme="dark"] .triage--re { color: #221800; }
+:root[data-theme="dark"] .table th { color: var(--ink-soft); }
+:root[data-theme="dark"] .table tbody tr:hover { background: #172845; }
+:root[data-theme="dark"] .wrong { background: #492a36; color: #ffc2bd; }
+:root[data-theme="dark"] .rule__n { background: #19395a; }
+:root[data-theme="dark"] .mode--demo { background: #493d25; color: #ffe1a3; }
+:root[data-theme="dark"] .mode--live { background: #153d38; color: #a9eed7; }
+:root[data-theme="dark"] code { background: #1a2a46; }
+:root[data-theme="dark"] .btn--primary { background: #62e1e7; color: #07172a; }
+:root[data-theme="dark"] .btn--primary:hover:not(:disabled) { background: #94f3f5; }
+:root[data-theme="dark"] .btn--ghost { border-color: #455874; color: var(--ink); }
+:root[data-theme="dark"] .btn--ghost:hover:not(:disabled) { border-color: var(--teal-bright); }
+
+@media (max-width: 720px) {
+  .theme-toggle { margin-left: auto; }
 }

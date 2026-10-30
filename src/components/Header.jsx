@@ -7,15 +7,15 @@ const TABS = [
 function Logo() {
   return (
     <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">
-      <circle cx="32" cy="32" r="29" fill="#10292B" />
-      <circle cx="32" cy="32" r="20" fill="none" stroke="#E9CDBB" strokeWidth="3" />
-      <circle cx="32" cy="32" r="7" fill="#2FA38F" />
-      <path d="M32 3v8M32 53v8M3 32h8M53 32h8" stroke="#E9CDBB" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="32" cy="32" r="29" fill="var(--lens)" />
+      <circle cx="32" cy="32" r="20" fill="none" stroke="var(--blush)" strokeWidth="3" />
+      <circle cx="32" cy="32" r="7" fill="var(--teal-bright)" />
+      <path d="M32 3v8M32 53v8M3 32h8M53 32h8" stroke="var(--blush)" strokeWidth="3" strokeLinecap="round" />
     </svg>
   );
 }
 
-export default function Header({ tab, onTab, demo }) {
+export default function Header({ tab, onTab, demo, theme, onThemeChange }) {
   return (
     <header className="header">
       <div className="header__inner">
@@ -43,6 +43,16 @@ export default function Header({ tab, onTab, demo }) {
         <span className={"mode " + (demo ? "mode--demo" : "mode--live")}>
           {demo ? "Demo mode" : "Live models"}
         </span>
+        <button
+          className="theme-toggle"
+          type="button"
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          aria-pressed={theme === "dark"}
+          onClick={() => onThemeChange(theme === "dark" ? "light" : "dark")}
+        >
+          <span aria-hidden="true">{theme === "dark" ? "☀" : "◐"}</span>
+          <span>{theme === "dark" ? "Light" : "Dark"}</span>
+        </button>
       </div>
     </header>
   );

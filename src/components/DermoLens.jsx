@@ -21,8 +21,8 @@ export default function DermoLens({ previewUrl, busy, onFile, onClear, onAnalyze
         onDrop={handleDrop}
       >
         <svg className="lens__ring" viewBox="0 0 200 200" aria-hidden="true">
-          <circle cx="100" cy="100" r="96" fill="none" stroke="#E9CDBB" strokeWidth="2" />
-          <circle cx="100" cy="100" r="88" fill="none" stroke="#2FA38F" strokeWidth="1" strokeDasharray="2 5" />
+          <circle cx="100" cy="100" r="96" fill="none" stroke="var(--blush)" strokeWidth="2" />
+          <circle cx="100" cy="100" r="88" fill="none" stroke="var(--teal-bright)" strokeWidth="1" strokeDasharray="2 5" />
           {Array.from({ length: 36 }).map((_, i) => {
             const a = (i * 10 * Math.PI) / 180;
             const long = i % 3 === 0;
@@ -32,7 +32,7 @@ export default function DermoLens({ previewUrl, busy, onFile, onClear, onAnalyze
                 key={i}
                 x1={100 + r1 * Math.cos(a)} y1={100 + r1 * Math.sin(a)}
                 x2={100 + 88 * Math.cos(a)} y2={100 + 88 * Math.sin(a)}
-                stroke="#E9CDBB" strokeWidth={long ? 1.5 : 0.8} opacity={long ? 0.9 : 0.5}
+                stroke="var(--blush)" strokeWidth={long ? 1.5 : 0.8} opacity={long ? 0.9 : 0.5}
               />
             );
           })}
@@ -64,7 +64,7 @@ export default function DermoLens({ previewUrl, busy, onFile, onClear, onAnalyze
 
       <div className="lens-actions">
         <button className="btn btn--primary" disabled={!previewUrl || busy} onClick={onAnalyze}>
-          {busy ? "Agents are working" : "Run the agents"}
+          {busy ? "Agents are working" : "Diagnosis"}
         </button>
         <button className="btn btn--ghost" disabled={busy} onClick={() => (previewUrl ? onClear() : inputRef.current?.click())}>
           {previewUrl ? "Remove photo" : "Choose photo"}
