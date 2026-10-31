@@ -33,14 +33,31 @@ export default function BatchPage() {
     try {
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data) || data.length === 0) throw new Error("empty");
-      const ok = data.every((r) => r.id && r.predicted_class);
+      const ids = data.map((r) => r.image_id ?? r.id);
+      const ok = data.every((r, i) => ids[i] && r.predicted_class && ["AUTO_TRIAGE", "REFER", "RE_IMAGE"].includes(r.decision))
+        && new Set(ids).size === ids.length;
       if (!ok) throw new Error("fields");
       setRows(data);
       setIsSample(false);
       setFilter("ALL");
     } catch {
-      setError("Could not read that file. It must be a JSON list where every item has at least an id and a predicted_class.");
+      setError("Could not read that file. Provide unique image IDs, predicted_class values and AUTO_TRIAGE, REFER or RE_IMAGE decisions for every row.");
     }
+  };
+
+  const downloadCsv = () => {
+    const quote = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const lines = [
+      ["image_id", "prediction", "decision"],
+      ...rows.map((row) => [row.image_id ?? row.id, row.predicted_class, row.decision]),
+    ];
+    const blob = new Blob([lines.map((line) => line.map(quote).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "dermaguard-predictions.csv";
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const pct = (v) => `${Math.round(v * 100)}%`;
@@ -62,6 +79,7 @@ export default function BatchPage() {
         </div>
         <div className="page__actions">
           <button className="btn btn--primary" onClick={() => inputRef.current?.click()}>Load results (JSON)</button>
+          {!isSample && <button className="btn btn--ghost" onClick={downloadCsv}>Download submission CSV</button>}
           {!isSample && (
             <button className="btn btn--ghost" onClick={() => { setRows(makeSampleBatch(30)); setIsSample(true); }}>
               Back to sample data

@@ -23,7 +23,7 @@ export default function Header({ tab, onTab, demo, theme, onThemeChange }) {
           <Logo />
           <div>
             <p className="brand__name">DermaGuard</p>
-            <p className="brand__sub">Three agents, one triage decision</p>
+            <p className="brand__sub">Six agents, one triage decision</p>
           </div>
         </div>
 

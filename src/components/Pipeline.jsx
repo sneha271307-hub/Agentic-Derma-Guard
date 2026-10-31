@@ -1,13 +1,16 @@
 const STEPS = [
   { id: "quality", name: "Image Quality Agent", does: "Checks the photo" },
   { id: "diagnosis", name: "Diagnosis Agent", does: "Predicts the lesion" },
-  { id: "triage", name: "Triage Agent", does: "Makes the decision" },
+  { id: "lesion", name: "Lesion Analysis Agent", does: "Checks visual cues" },
+  { id: "context", name: "Reasoning / Context Agent", does: "Reviews provided context" },
+  { id: "safety", name: "Safety Agent", does: "Checks conflicts" },
+  { id: "coordinator", name: "Coordinator Agent", does: "Records the decision" },
 ];
 
-// stage: "idle" | "quality" | "diagnosis" | "triage" | "done"
+// stage: "idle" | the six agent ids | "done"
 export default function Pipeline({ stage }) {
-  const order = ["quality", "diagnosis", "triage"];
-  const activeIndex = stage === "done" ? 3 : order.indexOf(stage);
+  const order = STEPS.map((step) => step.id);
+  const activeIndex = stage === "done" ? STEPS.length : order.indexOf(stage);
 
   return (
     <ol className="pipe" aria-label="Agent progress">

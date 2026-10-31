@@ -10,7 +10,7 @@ export default function TriageBanner({ triage }) {
       <article className="triage triage--idle">
         <p className="triage__tag">Final decision</p>
         <p className="triage__headline">Waiting for the agents</p>
-        <p className="triage__summary">The Triage Agent will choose AUTO_TRIAGE, REFER or RE_IMAGE after the other two agents report.</p>
+        <p className="triage__summary">The Coordinator Agent will choose AUTO_TRIAGE, REFER or RE_IMAGE after all six reports are ready.</p>
       </article>
     );
   }

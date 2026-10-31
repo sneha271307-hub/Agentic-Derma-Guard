@@ -16,7 +16,10 @@
 import { API_URL, IS_DEMO } from "../config";
 import { LESION_CLASSES } from "../data/classes";
 import { assessQuality } from "../utils/quality";
-import { decideTriage } from "../utils/triage";
+import { analyzeLesion } from "../utils/lesionAnalysis";
+import { assessContext } from "../utils/context";
+import { reviewSafety } from "../utils/safety";
+import { coordinateDecision } from "../utils/coordinator";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -75,37 +78,41 @@ async function callBackend(file) {
 }
 
 /**
- * Runs the three agents one after another.
- * onStage("quality" | "diagnosis" | "triage") lets the UI show which agent is working.
+ * Runs all six agents and returns each report for an auditable result.
  */
-export async function runPipeline(file, onStage = () => {}) {
+export async function runPipeline(file, patientContext = {}, onStage = () => {}) {
+  let quality;
+  let diagnosis;
   if (IS_DEMO) {
     onStage("quality");
-    const quality = await assessQuality(file);
+    quality = await assessQuality(file);
     await wait(600);
 
     onStage("diagnosis");
     await wait(900);
-    const diagnosis = mockDiagnosis(file);
-
-    onStage("triage");
-    await wait(500);
-    const triage = decideTriage(quality, diagnosis);
-    return { quality, diagnosis, triage, source: "demo" };
+    diagnosis = mockDiagnosis(file);
+  } else {
+    onStage("quality");
+    const [clientQuality, remote] = await Promise.all([assessQuality(file), callBackend(file)]);
+    quality = remote.quality || clientQuality;
+    await wait(300);
+    onStage("diagnosis");
+    await wait(300);
+    diagnosis = remote.diagnosis;
+    if (!diagnosis) throw new Error("The model server did not send a diagnosis.");
   }
 
-  onStage("quality");
-  const [clientQuality, remote] = await Promise.all([assessQuality(file), callBackend(file)]);
-  const quality = remote.quality || clientQuality;
+  onStage("lesion");
+  const lesionAnalysis = await analyzeLesion(file, quality);
   await wait(300);
-
-  onStage("diagnosis");
-  await wait(300);
-  const diagnosis = remote.diagnosis;
-  if (!diagnosis) throw new Error("The model server did not send a diagnosis.");
-
-  onStage("triage");
-  await wait(300);
-  const triage = remote.triage || decideTriage(quality, diagnosis);
-  return { quality, diagnosis, triage, source: "live" };
+  onStage("context");
+  const context = assessContext(patientContext);
+  await wait(250);
+  onStage("safety");
+  const safety = reviewSafety({ quality, diagnosis, lesionAnalysis, context });
+  await wait(250);
+  onStage("coordinator");
+  const coordinator = coordinateDecision({ quality, diagnosis, lesionAnalysis, context, safety });
+  await wait(250);
+  return { quality, diagnosis, lesionAnalysis, context, safety, coordinator, triage: coordinator, source: IS_DEMO ? "demo" : "live" };
 }

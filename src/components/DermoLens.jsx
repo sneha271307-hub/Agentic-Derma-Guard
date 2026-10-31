@@ -64,7 +64,7 @@ export default function DermoLens({ previewUrl, busy, onFile, onClear, onAnalyze
 
       <div className="lens-actions">
         <button className="btn btn--primary" disabled={!previewUrl || busy} onClick={onAnalyze}>
-          {busy ? "Agents are working" : "Diagnosis"}
+          {busy ? "Agents are working" : "Run six agents"}
         </button>
         <button className="btn btn--ghost" disabled={busy} onClick={() => (previewUrl ? onClear() : inputRef.current?.click())}>
           {previewUrl ? "Remove photo" : "Choose photo"}
