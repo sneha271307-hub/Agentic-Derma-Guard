@@ -1,62 +1,63 @@
-"""Submit Level-1 results to the organizers' API (details come from the WhatsApp group).
-
-!! build_payload() is a GUESS at the schema. Replace its body with the exact format the
-organizers specify, and set SUBMIT_URL / SUBMIT_TOKEN. Use dry_run=True to inspect first.
-"""
-import json
+"""Final CSV: exactly one row per hidden-test image with columns image_id, prediction, decision."""
+import csv
 import time
-from typing import Optional
+from typing import Iterable, Optional
 
 import requests
 
-from config import SUBMIT_TOKEN, SUBMIT_URL, TEAM_NAME
+from config import CLASSES
+
+DECISIONS = {"AUTO_TRIAGE", "REFER", "RE_IMAGE"}
 
 
-def build_payload(summary: dict, records: list) -> dict:
-    return {
-        "team": TEAM_NAME,
-        "level": 1,
-        "summary": summary,          # accuracy, macro_f1, per-class report, quality counts ...
-        "predictions": [             # one entry per validation image
-            {
-                "image_id": r["image_id"],
-                "quality_status": r["quality_status"],
-                "quality_score": r["quality_score"],
-                "quality_reasons": r["quality_reasons"],
-                "predicted_class": r["predicted_class"],
-                "confidence": r["confidence"],
-                "final_decision": r["final_decision"],
-            }
-            for r in records
-        ],
-    }
+def write_csv(rows: Iterable[dict], path: str) -> str:
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["image_id", "prediction", "decision"])
+        for r in rows:
+            w.writerow([r["image_id"], r["prediction"], r["decision"]])
+    return path
 
 
-def submit_results(summary: dict, records: list, url: Optional[str] = None,
-                   token: Optional[str] = None, dry_run: bool = False, retries: int = 3) -> dict:
-    payload = build_payload(summary, records)
-    if dry_run:
-        with open("submission_payload.json", "w") as f:
-            json.dump(payload, f, indent=2)
-        return {"dry_run": True, "saved": "submission_payload.json"}
+def validate_csv(path: str, expected_ids: Optional[Iterable[str]] = None) -> list:
+    problems, seen = [], set()
+    with open(path, newline="") as f:
+        rd = csv.DictReader(f)
+        if rd.fieldnames != ["image_id", "prediction", "decision"]:
+            problems.append(f"Columns must be exactly image_id,prediction,decision (got {rd.fieldnames})")
+        for i, row in enumerate(rd, 2):
+            iid = row.get("image_id", "")
+            if not iid or iid in seen:
+                problems.append(f"line {i}: missing or duplicate image_id '{iid}'")
+            seen.add(iid)
+            if row.get("prediction") not in CLASSES:
+                problems.append(f"line {i}: bad prediction '{row.get('prediction')}'")
+            if row.get("decision") not in DECISIONS:
+                problems.append(f"line {i}: bad decision '{row.get('decision')}'")
+    if expected_ids is not None:
+        exp = set(expected_ids)
+        if exp - seen:
+            problems.append(f"{len(exp - seen)} expected image IDs are missing")
+        if seen - exp:
+            problems.append(f"{len(seen - exp)} unexpected image IDs present")
+    return problems
 
-    url, token = url or SUBMIT_URL, token or SUBMIT_TOKEN
-    if not url:
-        raise RuntimeError("SUBMIT_URL not set - copy it from the WhatsApp group")
-    headers = {"Content-Type": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"   # adjust if they use X-API-Key etc.
 
+def upload_csv(path: str, url: str, token: str = "", header: str = "Authorization", scheme: str = "Bearer",
+               field: str = "file", extra: Optional[dict] = None, retries: int = 3) -> dict:
+    headers = {header: f"{scheme} {token}".strip()} if token else {}
     last = None
     for attempt in range(1, retries + 1):
         try:
-            r = requests.post(url, json=payload, headers=headers, timeout=60)
-            print(f"[submit] attempt {attempt}: HTTP {r.status_code} {r.text[:300]}")
+            with open(path, "rb") as f:
+                r = requests.post(url, files={field: ("submission.csv", f, "text/csv")}, data=extra or {},
+                                  headers=headers, timeout=120)
+            print(f"[upload] attempt {attempt}: HTTP {r.status_code} {r.text[:300]}")
             if r.ok:
                 return {"status_code": r.status_code, "body": r.text}
             last = r.text
         except requests.RequestException as e:
             last = str(e)
-            print(f"[submit] attempt {attempt} failed: {e}")
+            print(f"[upload] attempt {attempt} failed: {e}")
         time.sleep(2 * attempt)
-    raise RuntimeError(f"Submission failed after {retries} attempts: {last}")
+    raise RuntimeError(f"Upload failed after {retries} attempts: {last}")

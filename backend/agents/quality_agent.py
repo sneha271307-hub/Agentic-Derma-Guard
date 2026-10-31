@@ -1,7 +1,7 @@
 """Agent 1 - Image Quality Agent (pure OpenCV, no training needed).
 
-Contract:  check_image_quality(image) -> dict (see schemas.response.QualityResult)
-Status:    ACCEPTABLE -> proceed | MARGINAL -> proceed but decision engine is stricter | POOR -> RE_IMAGE
+Output matches the frontend: score 0-100, status GOOD|POOR, checks = list of {key,label,pass,value,detail}.
+Extra: grade = ACCEPTABLE | MARGINAL | POOR (MARGINAL makes the Safety agent stricter).
 """
 import cv2
 import numpy as np
@@ -56,71 +56,64 @@ def check_image_quality(image) -> dict:
     try:
         m = compute_metrics(image)
     except InvalidImageError:
-        return {"agent": "image_quality", "status": "POOR", "score": 0.0,
-                "checks": {"decode": "FAIL"}, "metrics": {}, "reasons": ["Image could not be read"]}
+        return {"agent": "image_quality", "status": "POOR", "grade": "POOR", "score": 0, "checks": [],
+                "metrics": {}, "reasons": ["Image could not be read"]}
 
-    checks, reasons, sub = {}, [], {}
+    items, reasons = [], []
+
+    def add(key, label, level, value, detail):
+        items.append({"key": key, "label": label, "level": level, "pass": level != "FAIL",
+                      "value": value, "detail": detail})
+        if level != "PASS":
+            reasons.append(detail)
 
     if min(m["width"], m["height"]) < t["min_side_px"]:
-        checks["resolution"] = "FAIL"; sub["resolution"] = 0.0
-        reasons.append(f"Resolution too low ({int(m['width'])}x{int(m['height'])}px)")
-    else:
-        checks["resolution"] = "PASS"; sub["resolution"] = 1.0
+        add("resolution", "Resolution", "FAIL", f"{int(m['width'])}x{int(m['height'])}px", "Resolution is too low.")
 
-    # Blur
-    if m["blur_score"] < t["blur_min"]:
-        checks["blur"] = "FAIL"; sub["blur"] = 0.0
-        reasons.append(f"Image is blurry (sharpness {m['blur_score']:.1f} < {t['blur_min']:.1f})")
-    elif m["blur_score"] < t["blur_marginal"]:
-        checks["blur"] = "WARN"; sub["blur"] = 0.6
-        reasons.append(f"Image is slightly soft (sharpness {m['blur_score']:.1f})")
+    b = m["blur_score"]
+    if b < t["blur_min"]:
+        add("blur", "Sharpness", "FAIL", f"{b:.0f} (needs {t['blur_min']:.0f}+)", "The photo is blurry. Hold steady and refocus.")
+    elif b < t["blur_marginal"]:
+        add("blur", "Sharpness", "WARN", f"{b:.0f}", "The photo is slightly soft.")
     else:
-        checks["blur"] = "PASS"; sub["blur"] = 1.0
+        add("blur", "Sharpness", "PASS", f"{b:.0f}", "Edges are crisp.")
 
-    # Illumination
-    if m["brightness"] < t["brightness_min"]:
-        checks["brightness"] = "FAIL"; sub["brightness"] = 0.0
-        reasons.append(f"Image is too dark (mean intensity {m['brightness']:.0f})")
-    elif m["brightness"] > t["brightness_max"]:
-        checks["brightness"] = "FAIL"; sub["brightness"] = 0.0
-        reasons.append(f"Image is overexposed (mean intensity {m['brightness']:.0f})")
+    br = m["brightness"]
+    if br < t["brightness_min"]:
+        add("light", "Lighting", "FAIL", f"{br:.0f} of 255", "The photo is too dark.")
+    elif br > t["brightness_max"]:
+        add("light", "Lighting", "FAIL", f"{br:.0f} of 255", "The photo is overexposed.")
+    elif m["contrast"] < t["contrast_min"]:
+        add("light", "Lighting", "WARN", f"{br:.0f} of 255", "Low contrast; lighting may be flat.")
     else:
-        checks["brightness"] = "PASS"; sub["brightness"] = 1.0
+        add("light", "Lighting", "PASS", f"{br:.0f} of 255", "Even brightness.")
 
-    if m["contrast"] < t["contrast_min"]:
-        checks["contrast"] = "WARN"; sub["contrast"] = 0.6
-        reasons.append(f"Low contrast (std {m['contrast']:.1f}); lighting may be flat")
+    g = m["glare_ratio"]
+    if g > t["glare_max"]:
+        add("glare", "Glare", "FAIL", f"{g * 100:.1f}% bright spots", "Reflections hide detail. Tilt the camera or use polarized light.")
+    elif g > t["glare_marginal"]:
+        add("glare", "Glare", "WARN", f"{g * 100:.1f}% bright spots", "Some glare on the skin.")
     else:
-        checks["contrast"] = "PASS"; sub["contrast"] = 1.0
+        add("glare", "Glare", "PASS", f"{g * 100:.1f}% bright spots", "No reflections on the skin.")
 
-    # Glare
-    if m["glare_ratio"] > t["glare_max"]:
-        checks["glare"] = "FAIL"; sub["glare"] = 0.0
-        reasons.append(f"Strong glare ({m['glare_ratio'] * 100:.1f}% saturated pixels)")
-    elif m["glare_ratio"] > t["glare_marginal"]:
-        checks["glare"] = "WARN"; sub["glare"] = 0.6
-        reasons.append(f"Some glare ({m['glare_ratio'] * 100:.1f}% saturated pixels)")
-    else:
-        checks["glare"] = "PASS"; sub["glare"] = 1.0
-
-    # Obstruction
     if m["occlusion_ratio"] > t["occlusion_max"]:
-        checks["obstruction"] = "FAIL"; sub["obstruction"] = 0.0
-        reasons.append("Large part of the frame is blocked or featureless")
+        add("obstruction", "Obstruction", "FAIL", f"{m['occlusion_ratio'] * 100:.0f}% blocked", "A large part of the frame is blocked or featureless.")
     elif m["hair_ratio"] > t["hair_max"]:
-        checks["obstruction"] = "WARN"; sub["obstruction"] = 0.6
-        reasons.append(f"Heavy hair/thin-object coverage ({m['hair_ratio'] * 100:.1f}% of image)")
+        add("obstruction", "Obstruction", "WARN", f"{m['hair_ratio'] * 100:.1f}% hair-like", "Heavy hair or thin objects cross the lesion.")
     else:
-        checks["obstruction"] = "PASS"; sub["obstruction"] = 1.0
+        add("obstruction", "Obstruction", "PASS", f"{m['hair_ratio'] * 100:.1f}% hair-like", "The lesion is clearly visible.")
 
-    score = float(np.mean(list(sub.values())))
-    if "FAIL" in checks.values():
-        status = "POOR"
-    elif "WARN" in checks.values():
-        status = "MARGINAL"
+    sub = {"PASS": 1.0, "WARN": 0.6, "FAIL": 0.0}
+    score = int(round(100 * float(np.mean([sub[i["level"]] for i in items]))))
+    levels = {i["level"] for i in items}
+    if "FAIL" in levels or score < t["min_score"]:
+        grade, status = "POOR", "POOR"
+        if "FAIL" not in levels:
+            reasons.append("Overall image quality score is too low.")
+    elif "WARN" in levels:
+        grade, status = "MARGINAL", "GOOD"
     else:
-        status = "ACCEPTABLE"
-        reasons.append("Sharpness, lighting, glare and obstruction checks passed")
+        grade, status = "ACCEPTABLE", "GOOD"
 
-    return {"agent": "image_quality", "status": status, "score": round(score, 3),
-            "checks": checks, "metrics": {k: round(v, 4) for k, v in m.items()}, "reasons": reasons}
+    return {"agent": "image_quality", "status": status, "grade": grade, "score": score, "checks": items,
+            "metrics": {k: round(float(v), 4) for k, v in m.items()}, "reasons": reasons}
